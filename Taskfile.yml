@@ -1,0 +1,107 @@
+version: "3"
+
+tasks:
+  deploy:init:
+    desc: Create deploy/.env from example
+    cmds:
+      - mkdir -p deploy
+      - |
+        if [ ! -f deploy/.env ]; then
+          cp deploy/.env.example deploy/.env
+          echo "Created deploy/.env from deploy/.env.example"
+        else
+          echo "deploy/.env already exists"
+        fi
+
+  deploy:up:
+    desc: Build and start netscan
+    deps:
+      - deploy:init
+    cmds:
+      - docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+
+  deploy:down:
+    desc: Stop netscan
+    cmds:
+      - docker compose --env-file deploy/.env -f deploy/docker-compose.yml down
+
+  deploy:ps:
+    desc: Show netscan container status
+    cmds:
+      - docker compose --env-file deploy/.env -f deploy/docker-compose.yml ps
+
+  deploy:logs:
+    desc: Follow netscan logs
+    cmds:
+      - docker compose --env-file deploy/.env -f deploy/docker-compose.yml logs -f
+
+  deploy:health:
+    desc: Check /health on the host
+    cmds:
+      - |
+        set -a
+        # shellcheck disable=SC1091
+        . deploy/.env
+        set +a
+        curl -fsS "http://${HEALTH_ADDR:-127.0.0.1:19090}/health"
+        echo
+
+  hub:init:
+    desc: Create deploy/.env.hub from example
+    cmds:
+      - mkdir -p deploy
+      - |
+        if [ ! -f deploy/.env.hub ]; then
+          cp deploy/.env.hub.example deploy/.env.hub
+          echo "Created deploy/.env.hub from deploy/.env.hub.example"
+        else
+          echo "deploy/.env.hub already exists"
+        fi
+
+  hub:up:
+    desc: Pull and start netscan from Docker Hub image
+    deps:
+      - hub:init
+    cmds:
+      - docker compose --env-file deploy/.env.hub -f deploy/docker-compose.hub.yml up -d
+
+  hub:down:
+    desc: Stop Docker Hub netscan stack
+    cmds:
+      - docker compose --env-file deploy/.env.hub -f deploy/docker-compose.hub.yml down
+
+  hub:ps:
+    desc: Show Docker Hub netscan container status
+    cmds:
+      - docker compose --env-file deploy/.env.hub -f deploy/docker-compose.hub.yml ps
+
+  hub:logs:
+    desc: Follow Docker Hub netscan logs
+    cmds:
+      - docker compose --env-file deploy/.env.hub -f deploy/docker-compose.hub.yml logs -f
+
+  image:build:
+    desc: Build netscan image locally (set NETSCAN_IMAGE)
+    cmds:
+      - |
+        if [ -z "${NETSCAN_IMAGE:-}" ]; then
+          echo "NETSCAN_IMAGE is required, e.g. NETSCAN_IMAGE=user/netscan:latest task image:build"
+          exit 1
+        fi
+      - docker build -f Dockerfile -t "${NETSCAN_IMAGE}" .
+
+  image:push:
+    desc: Push prebuilt netscan image (set NETSCAN_IMAGE)
+    cmds:
+      - |
+        if [ -z "${NETSCAN_IMAGE:-}" ]; then
+          echo "NETSCAN_IMAGE is required, e.g. NETSCAN_IMAGE=user/netscan:latest task image:push"
+          exit 1
+        fi
+      - docker push "${NETSCAN_IMAGE}"
+
+  image:build:push:
+    desc: Build and push netscan image (set NETSCAN_IMAGE)
+    cmds:
+      - task: image:build
+      - task: image:push

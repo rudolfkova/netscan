@@ -1,0 +1,21 @@
+# Host network: probes must see the server uplink, not the docker bridge.
+name: netscan
+
+services:
+  netscan:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_RAW
+    mem_limit: 128m
+    cpus: "0.25"
+    env_file:
+      - .env
+    volumes:
+      - netscan_data:/data
+
+volumes:
+  netscan_data:

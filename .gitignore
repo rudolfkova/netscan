@@ -1,0 +1,4 @@
+data/
+bin/
+deploy/.env
+deploy/.env.hub
